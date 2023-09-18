@@ -1,7 +1,10 @@
-import React, {useEffect, useState} from 'react'
+import {useEffect, useState} from 'react'
 import { Button, Form, Grid, Loader } from 'semantic-ui-react'
 import {storage} from "../firebase"
-import { useParams, useNavigation } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import {db} from "../firebase"
 
 const initialState = {
     name: "",
@@ -17,6 +20,48 @@ const AddEditUser = () => {
   const [progress, setProgress] = useState(null)
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const navigate = useNavigate()
+
+
+  useEffect(() => {
+
+    const uploadFile = () => {
+      const name = new Date().getTime() + file.name;
+      console.log(name)
+      const storageRef = ref(storage, file.name)
+      const uploadTask = uploadBytesResumable(storageRef, file)
+
+      uploadTask.on("state_changed", (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setProgress(progress)
+        switch(snapshot.state){
+          case "paused":
+            console.log("Uploding is pause")
+            break;
+            case "running":
+              console.log("Uploding is running")
+              break;
+          default:
+          break;
+        }
+      }, (error) => {
+        console.log(error);
+      },
+      () =>{
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadUrl) => {
+          setData((prev) => ({...prev, img: downloadUrl}))
+
+        })
+      }
+      )
+
+
+    }
+
+    file && uploadFile()
+
+  }, [file])
 
 
   const handleChange = (e) => {
@@ -46,12 +91,27 @@ const AddEditUser = () => {
     if(!contact){
       errors.contact ="Contact field is required"
     }
+
+    return errors
   }
 
-  const handleSbmit = (e) => {
+  const handleSbmit = async(e) => {
     e.preventDefault()
 
-    let error = validate()
+    let errors = validate()
+
+    if(Object.keys(errors).length) return setErrors(errors)
+
+    setIsSubmitting(true)
+    await addDoc(collection(db, "users"), {
+      ...data,
+      timestamp: serverTimestamp()
+    })
+
+    navigate("/")
+
+
+    
   }
 
   
@@ -69,6 +129,7 @@ const AddEditUser = () => {
               <Form onSubmit={handleSbmit}>
                 <Form.Input
                  label='Name'
+                 error={errors.name ? {content: errors.name} : null}
                   name='name'
                    placeholder='Enter your Name'
                    onChange={handleChange}
@@ -78,6 +139,7 @@ const AddEditUser = () => {
 
                    <Form.Input
                  label='Email'
+                 error={errors.email ? {content: errors.email} : null}
                   name='email'
                    placeholder='Enter your email'
                    onChange={handleChange}
@@ -86,6 +148,7 @@ const AddEditUser = () => {
 
                    <Form.TextArea
                  label='Info'
+                 error={errors.info ? {content: errors.info} : null}
                   name='info'
                    placeholder='Enter info'
                    onChange={handleChange}
@@ -95,6 +158,7 @@ const AddEditUser = () => {
 
                    <Form.Input
                  label='Contact'
+                 error={errors.contact ? {content: errors.contact} : null}
                   name='contact'
                    placeholder='Enter contact'
                    onChange={handleChange}
@@ -106,7 +170,13 @@ const AddEditUser = () => {
                    onChange={(e) => setFile(e.target.files[0])}
                      />
 
-                 
+                 <Button
+                  type='submit'
+                   primary 
+                   disabled={progress !== null && progress < 100}
+                   >
+                    Submit
+                   </Button>
               </Form>
               </>
               }
