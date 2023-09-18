@@ -1,10 +1,10 @@
 import {useEffect, useState} from 'react'
 import { Button, Form, Grid, Loader } from 'semantic-ui-react'
-import {storage} from "../firebase"
+import {storage, db} from "../firebase"
 import { useParams, useNavigate } from 'react-router-dom'
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import {db} from "../firebase"
+
 
 const initialState = {
     name: "",
