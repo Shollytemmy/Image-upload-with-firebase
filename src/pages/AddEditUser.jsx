@@ -3,7 +3,7 @@ import { Button, Form, Grid, Loader } from 'semantic-ui-react'
 import {storage, db} from "../firebase"
 import { useParams, useNavigate } from 'react-router-dom'
 import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
 
 
 const initialState = {
@@ -22,6 +22,28 @@ const AddEditUser = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const navigate = useNavigate()
+
+  const {id} = useParams()
+
+  useEffect(() => {
+  
+
+    id && getSingleUser();
+
+  }, [id])
+
+    const getSingleUser = async() => {
+    const docRef = doc(db, "users", id)
+    const snapshot = await getDoc(docRef)
+    console.log(snapshot)
+   if(snapshot.exists()){
+    setData({...snapshot.data()})
+   }
+
+  }
+
+
+  
 
 
   useEffect(() => {
@@ -103,12 +125,37 @@ const AddEditUser = () => {
     if(Object.keys(errors).length) return setErrors(errors)
 
     setIsSubmitting(true)
-    await addDoc(collection(db, "users"), {
+    if(!id){
+      try {
+        await addDoc(collection(db, "users"), {
       ...data,
       timestamp: serverTimestamp()
     })
 
     navigate("/")
+        
+      } catch (error) {
+        console.log(error)
+        
+      }
+
+    } else{
+      try {
+        await updateDoc(doc(db, "users", id), {
+      ...data,
+      timestamp: serverTimestamp()
+    })
+
+    navigate("/")
+        
+      } catch (error) {
+        console.log(error)
+        
+      }
+
+
+    }
+    
 
 
     
@@ -125,7 +172,7 @@ const AddEditUser = () => {
               ) 
               :
               <>
-              <h2>Add User</h2>
+              <h2>{id ? "Update User" : "Add User"}</h2>
               <Form onSubmit={handleSbmit}>
                 <Form.Input
                  label='Name'
